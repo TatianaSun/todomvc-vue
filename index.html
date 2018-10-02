@@ -16,7 +16,7 @@
 				<input
 					class="new-todo"
 					placeholder="What needs to be done?"
-					v-on:keyup.enter="addTodo"
+					v-on:keyup.enter="addTodo($event)"
 					v-model= "inputText">
 				<!-- 注意:被vue管理的模板中 autofocus不管用,需要使用自定义指令
 				事件绑定,如果没有参数,则事件处理函数默认接收一个事件源对象参数,如果绑定的时候调用传参了,则以你传递的参数为准.
@@ -38,17 +38,28 @@
 						已完成:completed, 未完成: 什么也没有,正在编辑:editing
 						 -->
 						<li
-							v-bind:class="{completed: item.done}"
-							v-for="item in todos">
+							v-bind:class="{
+								completed: item.done,
+								editing: item === currentEdit
+							}"
+							v-for="(item,index) in todos">
 							<div class="view">
 								<input
 									class="toggle"
 									type="checkbox"
 									v-model="item.done">
-								<label>{{ item.title }}</label>
-								<button class="destroy"></button>
+								<label
+									v-on:dblclick = "getEditing(item)">{{ item.title }}</label>
+								<button
+									class="destroy"
+									v-on:click="removeTodo(index)"></button>
 							</div>
-							<input class="edit" value="Create a TodoMVC template">
+							<input
+								class="edit"
+								v-model ="item.title"
+								v-on:keyup.enter="saveEdit(item,index)"
+								v-on:blur="saveEdit(item,index)"
+								v-on:keyup.esc="cancelEdit(index)">
 						</li>
 					</ul>
 				</section>
