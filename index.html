@@ -18,6 +18,7 @@
 					placeholder="What needs to be done?"
 					v-on:keyup.enter="addTodo($event)"
 					v-model= "inputText">
+					<!-- 也可以不双绑 -->
 				<!-- 注意:被vue管理的模板中 autofocus不管用,需要使用自定义指令
 				事件绑定,如果没有参数,则事件处理函数默认接收一个事件源对象参数,如果绑定的时候调用传参了,则以你传递的参数为准.
 				如果传参还想得到事件对象,则在调用的时候传递$event
@@ -29,7 +30,21 @@
 			<template v-if="todos.length">
 				<!-- vue提供了一个特殊的标签<template></template>,可以和v-if结合使用,渲染结果不会包含该标签 -->
 				<section class="main">
-					<input id="toggle-all" class="toggle-all" type="checkbox">
+					<!-- 标记所有任务为完成或者未完成状态
+						1.注册点击事件
+						2.在事件处理函数中获取复选框的状态
+						3.循环把所有任务项.done = 复选框的done
+
+					简单的做法:计算属性处理
+					双向绑定一个计算属性,和普通属性一样,计算属性也有值,双向绑定也会根据计算属性的值来决定checkbox 的选定状态
+					当更改checkbox的选中状态时,双绑,也会去改变toggleAllState,此时,toggleAllState计算属性的set方法就会被调用了
+
+					-->
+					<input
+						id="toggle-all"
+						class="toggle-all"
+						type="checkbox"
+						v-model="toggleAllState">
 					<label for="toggle-all">Mark all as complete</label>
 					<ul class="todo-list">
 						<!-- These are here just to show the structure of the list items -->
@@ -42,7 +57,7 @@
 								completed: item.done,
 								editing: item === currentEdit
 							}"
-							v-for="(item,index) in todos">
+							v-for="(item,index) in filterTodos">
 							<div class="view">
 								<input
 									class="toggle"
@@ -50,15 +65,24 @@
 									v-model="item.done">
 								<label
 									v-on:dblclick = "getEditing(item)">{{ item.title }}</label>
+									<!-- 增加一个中间变量用于存储当前双击的任务项 -->
 								<button
 									class="destroy"
 									v-on:click="removeTodo(index)"></button>
 							</div>
+							<!-- 在编辑文本框中回车或者失去焦点,保存编辑
+									1.注册input 的按键回车事件处理函数
+									2.拿到编辑的文本框内容(通过事件源对象.target.value)
+										拿到被编辑的任务项对象(也就是item)
+									3.如果编辑的内容为空,则执行删除任务项
+									4.让编辑的任务项.title = 文本框内容
+									5.去除编辑的样式,this.currentEdit = null
+							 -->
 							<input
 								class="edit"
-								v-model ="item.title"
-								v-on:keyup.enter="saveEdit(item,index)"
-								v-on:blur="saveEdit(item,index)"
+								:value="item.title"
+								v-on:keyup.enter="saveEdit(item,index,$event)"
+								v-on:blur="saveEdit(item,index,$event)"
 								v-on:keyup.esc="cancelEdit(index)">
 						</li>
 					</ul>
@@ -66,21 +90,47 @@
 				<!-- This footer should hidden by default and shown when there are todos -->
 				<footer class="footer">
 					<!-- This should be `0 items left` by default -->
-					<span class="todo-count"><strong>0</strong> item left</span>
+					<!-- 显示未完成的任务数
+					1.直接在模板中写内置的javascript表达式
+						<strong>{{ todos.filter(item => !item.done).length }}</strong>
+						但是模板逻辑太重,不好维护,不推荐
+					2.把逻辑封装到方法中,然后在绑定的时候调用渲染方法返回值
+					-->
+					<span class="todo-count">
+						<!-- 注意,函数一定要调用,否则就输出函数体了 -->
+						<strong>{{ remaining }}</strong> item left</span>
 					<!-- Remove this if you don't implement routing -->
+					<!-- 数据过滤
+						http://hostname主机名:post端口号/path路径#hash
+						# 锚点  ,用于网页的内容定位
+						# 术语被称之为hash
+						hash在这里就充当了我们过滤数据源的标志
+						window又一个事件: onhashchange事件
+						1.监听 window的onhashchage 事件,绑定事件处理函数
+						2.在事件处理函数中获取当前hash锚点
+						3.根据hash进行数据的筛选
+
+						li的样式处理
+					 -->
 					<ul class="filters">
 						<li>
-							<a class="selected" href="#/">All</a>
+							<a :class="{selected: hash === '#/'}" href="#/">All</a>
 						</li>
 						<li>
-							<a href="#/active">Active</a>
+							<a :class="{selected: hash === '#/active'}" href="#/active">Active</a>
 						</li>
 						<li>
-							<a href="#/completed">Completed</a>
+							<a :class="{selected: hash === '#/completed'}" href="#/completed">Completed</a>
 						</li>
 					</ul>
 					<!-- Hidden if no completed items are left ↓ -->
-					<button class="clear-completed">Clear completed</button>
+					<!-- 清除已完成任务项
+						1.注册点击事件处理函数
+						2.找到所有已完成任务项并删除
+					 -->
+					<button
+						class="clear-completed"
+						@click="clearAllDone">Clear completed</button>
 				</footer>
 			</template>
 		</section>
