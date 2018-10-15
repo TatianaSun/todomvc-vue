@@ -16,6 +16,7 @@
 				<input
 					class="new-todo"
 					placeholder="What needs to be done?"
+					v-focus
 					v-on:keyup.enter="addTodo($event)"
 					v-model= "inputText">
 					<!-- 也可以不双绑 -->
@@ -68,7 +69,7 @@
 									<!-- 增加一个中间变量用于存储当前双击的任务项 -->
 								<button
 									class="destroy"
-									v-on:click="removeTodo(index)"></button>
+									v-on:click="removeTodo(item)"></button>
 							</div>
 							<!-- 在编辑文本框中回车或者失去焦点,保存编辑
 									1.注册input 的按键回车事件处理函数
@@ -81,6 +82,7 @@
 							<input
 								class="edit"
 								:value="item.title"
+								v-todo-focus = "currentEdit === item"
 								v-on:keyup.enter="saveEdit(item,index,$event)"
 								v-on:blur="saveEdit(item,index,$event)"
 								v-on:keyup.esc="cancelEdit(index)">

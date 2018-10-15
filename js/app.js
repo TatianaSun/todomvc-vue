@@ -1,34 +1,21 @@
 ;
 (function (window,Vue) {
-	/*const todos = [
-		{
-			id: 1,
-			title: '吃饭',
-			done: true
-		},
-		{
-			id: 2,
-			title: '睡觉',
-			done: false
-		},
-		{
-			id: 3,
-			title: '旅游',
-			done: false
-		},
-		{
-			id:4,
-			title: '玩游戏',
-			done: false
-		},
-		{
-			id: 5,
-			title: '敲代码',
-			done: true
-		}
-	]*/
+
 	//从本地存储中获取任务列表数据
-	const todos = JSON.parse(window.localStorage.getItem('todos'))
+	const todos = JSON.parse(window.localStorage.getItem('todos') || '[]')
+	//注意: 第一次使用该应用的时候本地存储可能没有数据,一定要给个非null的条件处理
+
+	// 注册一个全局自定义指令 `v-focus`
+	//第一个参数:指令名称,第二个参数:一个选项对象
+	//指令都是用于DOM标签,当需要把指令作用到Dom节点的时候,会自动调用一次inserted方法
+	Vue.directive("focus", {
+		//inserted方法接收一个形参参数 element,就是作用该指令的DOM元素
+		inserted (element) {
+			//操作DOM聚焦
+			element.focus()
+		}
+	})
+
 	const app = new Vue({
 		el: "#todoapp",
 		data: {
@@ -86,9 +73,15 @@
         */
 			},
 			//删除单个任务项
-			removeTodo (index) {
+			removeTodo (item) {
 				// console.log(123)
-				this.todos.splice(index,1)
+				// 根据item.id找到item所在的索引
+				const index = this.todos.findIndex(function (t) {
+					return t.id === item.id
+				})
+				if (index !== -1) {
+					this.todos.splice(index,1)
+				}
 			},
 			//获得编辑样式
 			getEditing (item) {
@@ -148,19 +141,7 @@
 			// }
 		},
 		//计算属性选项对象
-		//计算属性的本质是方法,但是只能当属性来使用,不能调用
-		//计算属性非一般属性,本身不存储任何值,它的值来源于它本身的get方法
-		//计算属性的完整写法:
-		//  属性名: {
-		//  	get: function () {},  //当访问该属性的时候,会自动调用get方法
-		//  	set: function () {}   //当为属性赋值的时候,会自动调用set方法
-		//  }
 
-		//属性名: function () {}是
-		//   属性名: {
-		//   		get: function () {}
-		//   }
-		//   的简写方式
 		computed: {
 			remaining () {
 				return this.todos.filter(item => !item.done).length
@@ -192,8 +173,23 @@
 				handler: function () {  //当todos发生改变的时候会自动调用handler方法
 					//当todos发生改变时,将todos数据存储到localStorage中
 					window.localStorage.setItem('todos',JSON.stringify(this.todos))
+
+					window.onhashchange() // 当数据发生改变的时候,重新让filterTodos从数据员获取数据,例如在过滤的数据中做删除操作,要从源数据todos中删除,并不会影响filterTodos,因为filterTOdos是通过todos,.filter出来的,所以,todos发生改变的时候让filterTodos重新获取最新的数据就可以避免删除错误项
 				},
 				deep: true  //默认只能监视对象或者数组的一层数据,如果需要无极监视,则需要配置为深度监视
+			}
+		},
+		directives: {
+			//局部自定义之灵
+			//对象的key就是自定义指令的名字
+			//选项对象用来配置指令的生命周期钩子函数
+			'todo-focus': {
+				update (el,binding) {
+					if (binding.value === true) {
+						//找到双击的DOM节点,让它自动获得焦点
+						el.focus()
+					}
+				}
 			}
 		}
 
@@ -209,9 +205,6 @@
 		app.hash = hash
 		//根据hash 的不同过滤数据的展示
 		switch(hash){
-			case '#/' :
-				app.filterTodos = app.todos
-				break
 			case '#/active' :
 				app.filterTodos = app.todos.filter(function (item) {
 					return item.done === false
@@ -221,6 +214,10 @@
 				app.filterTodos = app.todos.filter(function (item) {
 					return item.done === true
 				})
+				break
+			default:
+				app.hash = "#/"
+				app.filterTodos = app.todos
 				break
 		}
 
